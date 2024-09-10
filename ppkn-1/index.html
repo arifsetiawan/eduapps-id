@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPKN Kuis Kelas 1</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.8;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            font-size: 18px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 36px;
+        }
+
+        h2 {
+            font-size: 28px;
+        }
+
+        .question,
+        .chapter-selection {
+            margin-bottom: 30px;
+        }
+
+        .question p,
+        .chapter-selection p {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .options,
+        .chapters {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .options li,
+        .chapters li {
+            margin-bottom: 15px;
+        }
+
+        .options label,
+        .chapters label {
+            font-size: 20px;
+            margin-left: 10px;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #result {
+            text-align: center;
+            font-size: 28px;
+            margin-top: 30px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>PPKN Kuis Kelas 1</h1>
+        <div id="quiz"></div>
+        <button id="submit">Selanjutnya</button>
+        <div id="result"></div>
+    </div>
+
+    <script src="quiz-data.js"></script>
+    <script>
+        let currentBab = 0;
+        let currentQuestion = 0;
+        let score = 0;
+
+        const quizContainer = document.getElementById('quiz');
+        const resultContainer = document.getElementById('result');
+        const submitButton = document.getElementById('submit');
+
+        // Web Audio API setup
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBeep(frequency, duration) {
+            const oscillator = audioContext.createOscillator();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+
+            const gainNode = audioContext.createGain();
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        function playClickSound() {
+            playBeep(800, 0.1);
+        }
+
+        function playSubmitSound() {
+            playBeep(1000, 0.15);
+        }
+
+        function loadChapterSelection() {
+            let chapterHtml = `
+                <div class="chapter-selection">
+                    <h2>Pilih Bab</h2>
+                    <ul class="chapters">
+            `;
+
+            quizData.forEach((bab, index) => {
+                chapterHtml += `
+                    <li>
+                        <input type="radio" name="chapter" id="chapter${index}" value="${index}">
+                        <label for="chapter${index}">Bab ${bab.bab}: ${bab.judul}</label>
+                    </li>
+                `;
+            });
+
+            chapterHtml += `
+                    </ul>
+                </div>
+            `;
+
+            quizContainer.innerHTML = chapterHtml;
+            submitButton.textContent = 'Mulai Kuis';
+
+            // Add click sound to radio buttons
+            const radioButtons = document.querySelectorAll('input[type="radio"]');
+            radioButtons.forEach(button => {
+                button.addEventListener('click', playClickSound);
+            });
+        }
+
+        function loadQuestion() {
+            const question = quizData[currentBab].pertanyaan[currentQuestion];
+            let questionHtml = `
+                <div class="question">
+                    <h2>Bab ${quizData[currentBab].bab}: ${quizData[currentBab].judul}</h2>
+                    <h3>Pertanyaan ${currentQuestion + 1}</h3>
+                    <p>${question.soal}</p>
+                    <ul class="options">
+            `;
+
+            if (question.tipe === 'pilihan_ganda') {
+                questionHtml += question.pilihan.map((option, index) => `
+                    <li>
+                        <input type="radio" name="answer" id="option${index}" value="${index}">
+                        <label for="option${index}">${option}</label>
+                    </li>
+                `).join('');
+            } else if (question.tipe === 'benar_salah') {
+                questionHtml += `
+                    <li>
+                        <input type="radio" name="answer" id="optionTrue" value="true">
+                        <label for="optionTrue">Benar</label>
+                    </li>
+                    <li>
+                        <input type="radio" name="answer" id="optionFalse" value="false">
+                        <label for="optionFalse">Salah</label>
+                    </li>
+                `;
+            }
+
+            questionHtml += `
+                    </ul>
+                </div>
+            `;
+            quizContainer.innerHTML = questionHtml;
+
+            // Add click sound to radio buttons
+            const radioButtons = document.querySelectorAll('input[type="radio"]');
+            radioButtons.forEach(button => {
+                button.addEventListener('click', playClickSound);
+            });
+
+            submitButton.textContent = 'Selanjutnya';
+        }
+
+        function loadResult() {
+            resultContainer.innerHTML = `
+                <h2>Hasil Kuis Bab ${quizData[currentBab].bab}</h2>
+                <p>Skor Anda: ${score} dari ${quizData[currentBab].pertanyaan.length}</p>
+            `;
+            submitButton.textContent = 'Kembali ke Pilihan Bab';
+        }
+
+        submitButton.addEventListener('click', () => {
+            playSubmitSound();
+
+            if (submitButton.textContent === 'Mulai Kuis') {
+                const selectedChapter = document.querySelector('input[name="chapter"]:checked');
+                if (selectedChapter) {
+                    currentBab = parseInt(selectedChapter.value);
+                    currentQuestion = 0;
+                    score = 0;
+                    loadQuestion();
+                } else {
+                    alert('Silakan pilih bab!');
+                }
+            } else if (submitButton.textContent === 'Selanjutnya') {
+                const answer = document.querySelector('input[name="answer"]:checked');
+                if (answer) {
+                    const question = quizData[currentBab].pertanyaan[currentQuestion];
+                    let isCorrect;
+
+                    if (question.tipe === 'pilihan_ganda') {
+                        isCorrect = parseInt(answer.value) === question.jawaban;
+                    } else if (question.tipe === 'benar_salah') {
+                        isCorrect = answer.value === question.jawaban.toString();
+                    }
+
+                    if (isCorrect) {
+                        score++;
+                    }
+
+                    currentQuestion++;
+                    if (currentQuestion < quizData[currentBab].pertanyaan.length) {
+                        loadQuestion();
+                    } else {
+                        loadResult();
+                    }
+                } else {
+                    alert('Silakan pilih jawaban!');
+                }
+            } else if (submitButton.textContent === 'Kembali ke Pilihan Bab') {
+                resultContainer.innerHTML = '';
+                loadChapterSelection();
+            }
+        });
+
+        loadChapterSelection();
+    </script>
+</body>
+
+</html>
